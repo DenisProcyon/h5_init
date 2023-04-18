@@ -1,57 +1,171 @@
 import java.util.*;
 
 public class Node {
-
    private String name;
    private Node firstChild;
    private Node nextSibling;
 
-   Node (String n, Node d, Node r) {
+   Node(String n, Node d, Node r) {
       name = n;
       firstChild = d;
       nextSibling = r;
    }
 
-   public static Node parsePostfix (String s) {
-      Stack<Node> stack = new Stack<Node>();
-      for (int i = s.length() - 1; i >= 0; i--) { //starting from end
-         char c = s.charAt(i);
-         if (c == ')') {
-            stack.push(null); // null represents that we are done dealing with siblings of current node
-         } else if (c == ',') {
-            continue;
-         } else { // if its anything except "," and ")" it means there is node
-            Node child = stack.pop();
-            Node sibling = stack.pop();
-            // we take two last elements of stack
-            if (sibling != null) { // in this case we are dealing with root because it has no siblings
-               sibling.nextSibling = child;
+   public static Node parsePostfix(String s) {
+      try {
+         if (!s.contains("(") || !s.contains(")")) {
+            if (s.trim().matches("[a-zA-Z0-9.]+")) {
+               return new Node(s.trim(), null, null);
             }
-            stack.push(new Node(String.valueOf(sibling.name), child, sibling.nextSibling));
+            throw new RuntimeException("Invalid input string: missing parentheses in " + s);
+         }
+
+         if (s.contains("( ,") || s.contains(", )")) {
+            throw new RuntimeException("Invalid input string: comma between parentheses in " + s);
+         }
+
+         int[] idx = new int[]{0};
+         Node root = parsePostfixHelper(s, idx, false);
+         if (idx[0] != s.length()) {
+            throw new RuntimeException("Invalid input string in " + s);
+         }
+         return root;
+      } catch (RuntimeException e) {
+         throw new RuntimeException("Error in parsePostfix: " + e.getMessage());
+      }
+   }
+
+   private static Node parsePostfixHelper(String s, int[] idx, boolean allowExtraComma) {
+      if (idx[0] >= s.length()) {
+         throw new RuntimeException("Unexpected end of input string in " + s);
+      }
+
+      Node root = null;
+
+      while (idx[0] < s.length() && s.charAt(idx[0]) != ',' && s.charAt(idx[0]) != ')') {
+         char c = s.charAt(idx[0]);
+         idx[0]++;
+
+         if (c == '(') {
+            if (root == null) {
+               root = new Node(null, null, null);
+            } else if (root.firstChild != null) {
+               throw new RuntimeException("Invalid input string: multiple children for the same node in " + s);
+            }
+            root.firstChild = parsePostfixHelper(s, idx, true);
+         } else {
+            StringBuilder nodeName = new StringBuilder();
+            nodeName.append(c);
+
+            while (idx[0] < s.length() && s.charAt(idx[0]) != ',' && s.charAt(idx[0]) != ')' && s.charAt(idx[0]) != '(') {
+               if (!Character.isLetterOrDigit(s.charAt(idx[0])) && s.charAt(idx[0]) != ' ') {
+                  throw new RuntimeException("Invalid character in node name in " + s);
+               }
+               nodeName.append(s.charAt(idx[0]));
+               idx[0]++;
+            }
+
+            if (root == null) {
+               root = new Node(nodeName.toString(), null, null);
+            } else if (root.name != null) {
+               throw new RuntimeException("Invalid input string: multiple names for the same node in " + s);
+            } else {
+               root.name = nodeName.toString();
+            }
          }
       }
-      return stack.pop(); //last element is obviously root
+
+      if (root == null) {
+         throw new RuntimeException("Invalid input string: empty node name in " + s);
+      }
+
+      if (!allowExtraComma && idx[0] < s.length() && s.charAt(idx[0]) == ',') {
+         throw new RuntimeException("Invalid input string: extra comma in " + s);
+      }
+
+      if (idx[0] < s.length() && s.charAt(idx[0]) == ')') {
+         idx[0]++;
+      }
+
+      // Connect siblings
+      if (idx[0] < s.length() && s.charAt(idx[0]) == ',') {
+         idx[0]++;
+         if (root == null) {
+            throw new RuntimeException("Invalid input string: sibling without a parent in " + s);
+         }
+         root.nextSibling = parsePostfixHelper(s, idx, true);
+      }
+
+      if (root.name.equals(",")) {
+         throw new RuntimeException("Invalid input string: comma between parentheses in " + s);
+      }
+
+      if (idx[0] < s.length() && s.charAt(idx[0]) == ',') {
+         throw new RuntimeException("Invalid input string: unexpected comma in " + s);
+      }
+
+      return root;
    }
 
    public String leftParentheticRepresentation() {
       StringBuilder sb = new StringBuilder();
-      sb.append(name);
-      if (firstChild != null) {
-         sb.append("(");
-         sb.append(firstChild.leftParentheticRepresentation());
-         sb.append(")");
-      }
-      if (nextSibling != null) {
-         sb.append(nextSibling.leftParentheticRepresentation());
-      }
+      leftParentheticRepresentationHelper(this, sb);
       return sb.toString();
    }
 
-   public static void main (String[] param) {
-      // after I tried it for 2 hours, saving siblings and children in
-      // variables, I asked chatGPT how to deal with it
-      // he told me that stack is a possible solution
+   private void leftParentheticRepresentationHelper(Node node, StringBuilder sb) {
+      if (node == null) {
+         return;
+      }
 
-      // code itself is done by me though
+      sb.append(node.name);
+
+      if (node.firstChild != null) {
+         sb.append("(");
+         leftParentheticRepresentationHelper(node.firstChild, sb);
+         sb.append(")");
+      }
+
+      if (node.nextSibling != null) {
+         sb.append(",");
+         leftParentheticRepresentationHelper(node.nextSibling, sb);
+      }
    }
+
+   public String toXML() {
+      StringBuilder sb = new StringBuilder();   toXMLHelper(this, sb, 1);   return sb.toString().trim();}
+
+   private void toXMLHelper(Node node, StringBuilder sb, int depth) {
+      if (node == null) {
+         return;   }
+
+      String indent = "    ".repeat(depth - 1);   String closingTagIndent = (node.firstChild != null) ? indent : "";   sb.append(indent).append("<L").append(depth).append("> ").append(node.name).append(" ");   if (node.firstChild != null) {
+         sb.append("\n");      toXMLHelper(node.firstChild, sb, depth + 1);      sb.append(indent);   }
+
+      sb.append("</L").append(depth).append(">\n");   if (node.nextSibling != null) {
+         toXMLHelper(node.nextSibling, sb, depth);   }
+   }
+
+
+
+   public static void main (String[]param){
+      // Example from prompt
+      String s = "(B1,C)A";
+      Node t = Node.parsePostfix(s);
+      String v = t.leftParentheticRepresentation();
+      System.out.println(s + " ==> " + v); // (B1,C)A ==> A(B1,C)
+
+      // Test case 1
+      s = "(B1,C,D)A";
+      t = Node.parsePostfix(s);
+      v = t.leftParentheticRepresentation();
+      System.out.println(s + " ==> " + v); // (B1,C,D)A ==> A(B1,C,D)
+
+      // Test case 2
+      s = "(((2,1)-,4)*,(69,3)/)+";
+      t = Node.parsePostfix(s);
+      v = t.leftParentheticRepresentation();
+      System.out.println(s + " ==> " + v); // (((2,1)-,4)*,(69,3)/)+ ==> +(*(-(2,1),4),/(69,3))
+   }
+
 }

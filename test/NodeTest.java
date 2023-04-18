@@ -19,6 +19,38 @@ public class NodeTest {
       assertEquals ("Tree: " + s, "+(*(-(2,1),4),/(69,3))", r);
    }
 
+   @Test
+   public void testExampleFromPrompt() {
+      String input = "(B1,C)A";   Node root = Node.parsePostfix(input);   String expectedOutput = "A(B1,C)";   assertEquals(expectedOutput, root.leftParentheticRepresentation());}
+
+   @Test
+   public void testLeftParentheticRepresentation() {
+      String input = "((C)B,(E,F)D,G)A";   Node root = Node.parsePostfix(input);   String expectedOutput = "A(B(C),D(E,F),G)";   assertEquals(expectedOutput, root.leftParentheticRepresentation());}
+
+   @Test
+   public void testToXML() {
+      String input = "((C)B,(E,F)D,G)A";   Node root = Node.parsePostfix(input);   String expectedOutput =
+              "<L1> A \n" +
+                      "    <L2> B \n" +
+                      "        <L3> C </L3>\n" +
+                      "    </L2>\n" +
+                      "    <L2> D \n" +
+                      "        <L3> E </L3>\n" +
+                      "        <L3> F </L3>\n" +
+                      "    </L2>\n" +
+                      "    <L2> G </L2>\n" +
+                      "</L1>";
+      assertEquals(expectedOutput, root.toXML());}
+
+
+   @Test
+   public void testSingleNode() {
+      String input = "A";   Node root = Node.parsePostfix(input);   String expectedOutput = "A";   assertEquals(expectedOutput, root.leftParentheticRepresentation());}
+
+   @Test
+   public void testSingleNodeToXML() {
+      String input = "A";   Node root = Node.parsePostfix(input);   String expectedOutput = "<L1> A </L1>";   assertEquals(expectedOutput, root.toXML());}
+
    @Test (timeout=1000)
    public void testParsePostfixAndLeftParentheticRepresentation1() {
       String s = "((((E)D)C)B)A";
